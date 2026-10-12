@@ -1,0 +1,55 @@
+name: Build Android APK
+
+on:
+  workflow_dispatch:
+  push:
+    branches:
+      - main
+    paths:
+      - 'mobile_app.zip'
+      - '.github/workflows/build-apk.yml'
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Setup Java
+        uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: '17'
+
+      - name: Setup Flutter
+        uses: subosito/flutter-action@v2
+        with:
+          channel: stable
+          cache: true
+
+      - name: Extract mobile app
+        run: |
+          rm -rf mobile_app
+          unzip -q mobile_app.zip
+          test -f mobile_app/pubspec.yaml
+
+      - name: Generate Android project files
+        working-directory: mobile_app
+        run: flutter create . --platforms=android --project-name ai_business_agent_mobile --org com.aibusinessagent
+
+      - name: Get dependencies
+        working-directory: mobile_app
+        run: flutter pub get
+
+      - name: Build release APK
+        working-directory: mobile_app
+        run: flutter build apk --release
+
+      - name: Upload APK artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: AI-Business-Agent-APK
+          path: mobile_app/build/app/outputs/flutter-apk/app-release.apk
+          if-no-files-found: error
